@@ -1,0 +1,30 @@
+[package]
+name = "lattice-bridge"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+description = "Cross-ontology bridge axiom generator for BFO-grounded ontologies"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/j0yen/lattice-bridge"
+
+[[bin]]
+name = "lattice-bridge"
+path = "src/main.rs"
+
+[lib]
+name = "lattice_bridge"
+path = "src/lib.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+strsim = "0.11"
+horned-owl = { version = "0.15.0-alpha" }
+oxrdfio = ">=0.1,<0.2"
+oxrdf = ">=0.2,<0.3"
+thiserror = "1"
+ousia-reason = { path = "../ousia-reason" }
+
+[dev-dependencies]
+tempfile = "3"
