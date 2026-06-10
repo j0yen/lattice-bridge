@@ -218,7 +218,7 @@ fn ac4_bridge_owl_is_parseable() {
     use horned_owl::ontology::set::SetOntology;
     let config = ParserConfiguration::default();
     let result: Result<(SetOntology<String>, _), _> =
-        horned_owl::io::owx::reader::read(std::io::BufReader::new(xml.as_bytes()), config);
+        horned_owl::io::owx::reader::read(&mut std::io::BufReader::new(xml.as_bytes()), config);
     assert!(result.is_ok(), "bridge.owl must be re-parseable by horned-owl: {:?}", result.err());
 }
 

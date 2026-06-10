@@ -68,7 +68,7 @@ fn is_bfo(iri: &str) -> bool {
 /// Extract a class IRI from a ClassExpression if it is a named class.
 fn named_class_iri(ce: &ClassExpression<String>) -> Option<String> {
     match ce {
-        ClassExpression::Class(c) => Some(c.0.clone()),
+        ClassExpression::Class(c) => Some(String::from(&c.0)),
         _ => None,
     }
 }
@@ -91,7 +91,7 @@ fn extract_annotations(
                 horned_owl::model::AnnotationValue::Literal(lit) => lit.literal().to_string(),
                 horned_owl::model::AnnotationValue::IRI(iri) => iri.to_string(),
             };
-            let entry = map.entry(subject_iri).or_default();
+            let entry = map.entry(subject_iri.to_string()).or_default();
             match prop_iri {
                 vocab::RDFS_LABEL
                 | vocab::OBO_EXACT_SYNONYM
@@ -165,7 +165,7 @@ fn deepest_bfo(anc: &HashSet<String>) -> Option<BfoCategory> {
 pub fn load_anchors<R: BufRead>(reader: R) -> Result<Vec<BfoAnchor>, BridgeError> {
     let config = horned_owl::io::ParserConfiguration::default();
     let (ont, _prefixes): (SetOntology<String>, _) =
-        horned_owl::io::owx::reader::read(reader, config)
+        horned_owl::io::owx::reader::read(&mut reader, config)
             .map_err(|e| BridgeError::OwlParse(e.to_string()))?;
 
     let annotations = extract_annotations(&ont);
@@ -175,8 +175,9 @@ pub fn load_anchors<R: BufRead>(reader: R) -> Result<Vec<BfoAnchor>, BridgeError
     for ac in ont.iter() {
         if let Component::DeclareClass(dc) = &ac.component {
             let iri = dc.0 .0.clone();
-            if !is_bfo(&iri) && iri != vocab::OWL_THING {
-                declared.push(iri);
+            let iri_str = iri.to_string();
+            if !is_bfo(&iri_str) && iri_str != vocab::OWL_THING {
+                declared.push(iri_str);
             }
         }
     }
