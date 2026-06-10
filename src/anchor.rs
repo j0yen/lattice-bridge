@@ -90,6 +90,7 @@ fn extract_annotations(
             let value = match &aa.ann.av {
                 horned_owl::model::AnnotationValue::Literal(lit) => lit.literal().to_string(),
                 horned_owl::model::AnnotationValue::IRI(iri) => iri.to_string(),
+                horned_owl::model::AnnotationValue::AnonymousIndividual(_) => continue,
             };
             let entry = map.entry(subject_iri.to_string()).or_default();
             match prop_iri {
@@ -162,7 +163,7 @@ fn deepest_bfo(anc: &HashSet<String>) -> Option<BfoCategory> {
 /// Load an ontology from an OWL/XML reader and compute BFO anchors for all classes.
 ///
 /// Returns a vec of `BfoAnchor` — one per declared class.
-pub fn load_anchors<R: BufRead>(reader: R) -> Result<Vec<BfoAnchor>, BridgeError> {
+pub fn load_anchors<R: BufRead>(mut reader: R) -> Result<Vec<BfoAnchor>, BridgeError> {
     let config = horned_owl::io::ParserConfiguration::default();
     let (ont, _prefixes): (SetOntology<String>, _) =
         horned_owl::io::owx::reader::read(&mut reader, config)
