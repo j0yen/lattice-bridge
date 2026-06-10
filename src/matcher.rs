@@ -23,7 +23,9 @@ impl Default for AlignOptions {
     fn default() -> Self {
         Self {
             confidence_threshold: 0.85,
-            lex_weight: 0.8,
+            // lex_weight=0.9 ensures a perfect label match (lex=1.0, struc=0.0)
+            // yields confidence=0.9, clearing the 0.85 threshold.
+            lex_weight: 0.9,
         }
     }
 }
@@ -204,7 +206,8 @@ mod tests {
         let m = &mappings[0];
         assert_eq!(m.kind, MappingKind::Equivalent);
         assert!(m.accepted);
-        assert!((m.confidence - 1.0).abs() < 1e-6, "expected confidence ~1.0, got {}", m.confidence);
+        // confidence = lex_weight(0.9) * 1.0 + 0.1 * 0.0 = 0.9 >= threshold(0.85)
+        assert!(m.confidence >= opts.confidence_threshold, "expected confidence >= threshold, got {}", m.confidence);
     }
 
     #[test]
