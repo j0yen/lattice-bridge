@@ -262,6 +262,49 @@ fn ac7_person_person_high_confidence_equivalence() {
     );
 }
 
+// ── AC5: --from-registry invokes lattice-registry path ───────────────────────
+//
+// We cannot rely on lattice-registry being installed, so we verify the error path:
+// when --from-registry is passed and lattice-registry is absent (or returns a
+// non-zero exit), the CLI exits non-zero with a registry error message.
+// This confirms the flag is wired and the resolve_path call is reachable.
+#[test]
+fn ac5_from_registry_returns_error_when_registry_absent() {
+    use std::process::Command;
+    use tempfile::TempDir;
+
+    let dir = TempDir::new().unwrap();
+    let out = dir.path().join("bridge.owl");
+    let proposals = dir.path().join("bridge.proposals.jsonl");
+
+    // Run the binary with a non-existent ontology spec + --from-registry.
+    // lattice-registry is either absent or will return non-zero for a bogus spec.
+    // Either way the CLI must exit non-zero and mention the registry.
+    let status = Command::new(env!("CARGO_BIN_EXE_lattice-bridge"))
+        .args([
+            "align",
+            "--a", "no-such-ontology-id",
+            "--b", "no-such-ontology-id-b",
+            "--from-registry",
+            "--out", out.to_str().unwrap(),
+            "--proposals", proposals.to_str().unwrap(),
+        ])
+        .output()
+        .expect("failed to spawn lattice-bridge binary");
+
+    // Must fail — registry not available or returned error.
+    assert!(
+        !status.status.success(),
+        "--from-registry with missing registry must exit non-zero"
+    );
+    let stderr = String::from_utf8_lossy(&status.stderr);
+    // The error must mention 'registry' (from BridgeError::Registry)
+    assert!(
+        stderr.contains("registry") || stderr.contains("lattice-registry"),
+        "stderr must mention registry error, got: {stderr}"
+    );
+}
+
 // ── AC8: proposals JSONL roundtrip ───────────────────────────────────────────
 
 #[test]
