@@ -14,6 +14,7 @@ use lattice_bridge::{
     error::BridgeError,
 };
 
+
 #[derive(Parser)]
 #[command(name = "lattice-bridge", version, about = "Cross-ontology bridge axiom generator for BFO-grounded ontologies")]
 struct Cli {
@@ -99,14 +100,22 @@ fn run() -> Result<(), BridgeError> {
             eprintln!("Loading ontology A: {}", path_a.display());
             let a_anchors = {
                 let f = File::open(&path_a)?;
-                load_anchors(BufReader::new(f))?
+                let (anchors, meta) = load_anchors(BufReader::new(f))?;
+                if let Some(ref v) = meta.version_iri {
+                    eprintln!("  versionIRI: {v}");
+                }
+                anchors
             };
             eprintln!("  {} classes with BFO anchors", a_anchors.len());
 
             eprintln!("Loading ontology B: {}", path_b.display());
             let b_anchors = {
                 let f = File::open(&path_b)?;
-                load_anchors(BufReader::new(f))?
+                let (anchors, meta) = load_anchors(BufReader::new(f))?;
+                if let Some(ref v) = meta.version_iri {
+                    eprintln!("  versionIRI: {v}");
+                }
+                anchors
             };
             eprintln!("  {} classes with BFO anchors", b_anchors.len());
 

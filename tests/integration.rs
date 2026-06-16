@@ -121,7 +121,8 @@ fn make_ontology_b() -> &'static str {
 }
 
 fn load(xml: &str) -> Vec<lattice_bridge::anchor::BfoAnchor> {
-    load_anchors(std::io::BufReader::new(xml.as_bytes())).expect("load_anchors failed")
+    let (anchors, _meta) = load_anchors(std::io::BufReader::new(xml.as_bytes())).expect("load_anchors failed");
+    anchors
 }
 
 // ── AC1: align emits candidate mappings with required fields ─────────────────
@@ -260,6 +261,95 @@ fn ac7_person_person_high_confidence_equivalence() {
         "Person↔Person confidence must be >= 0.85, got {}",
         pm.confidence
     );
+}
+
+// ── AC4-versionIRI: fixture with owl:versionIRI parses cleanly ───────────────
+
+#[test]
+fn ac4_version_iri_fixture_parses_without_error() {
+    // Minimal OWL/XML with owl:versionIRI inside owl:Ontology — this is valid OWL 2 DL
+    // but horned-owl 1.x rejects it. preprocess_owl_xml must strip it before parsing.
+    let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<Ontology xmlns="http://www.w3.org/2002/07/owl#"
+          xml:base="http://example.org/versioned"
+          ontologyIRI="http://example.org/versioned">
+  <Prefix name="owl" IRI="http://www.w3.org/2002/07/owl#"/>
+  <Prefix name="rdf" IRI="http://www.w3.org/1999/02/22-rdf-syntax-ns#"/>
+  <Prefix name="rdfs" IRI="http://www.w3.org/2000/01/rdf-schema#"/>
+  <Prefix name="obo" IRI="http://purl.obolibrary.org/obo/"/>
+  <owl:versionIRI rdf:resource="http://example.org/v1"/>
+  <Declaration><Class IRI="http://example.org/versioned#Widget"/></Declaration>
+  <SubClassOf>
+    <Class IRI="http://example.org/versioned#Widget"/>
+    <Class IRI="http://purl.obolibrary.org/obo/BFO_0000030"/>
+  </SubClassOf>
+  <AnnotationAssertion>
+    <AnnotationProperty IRI="http://www.w3.org/2000/01/rdf-schema#label"/>
+    <IRI>http://example.org/versioned#Widget</IRI>
+    <Literal>Widget</Literal>
+  </AnnotationAssertion>
+</Ontology>"#;
+
+    let (anchors, meta) =
+        load_anchors(std::io::BufReader::new(xml.as_bytes())).expect("load_anchors must not fail on versionIRI");
+
+    // The versionIRI must be captured.
+    assert_eq!(
+        meta.version_iri.as_deref(),
+        Some("http://example.org/v1"),
+        "versionIRI must be extracted from the OWL header"
+    );
+
+    // The class must still be parsed correctly.
+    assert_eq!(anchors.len(), 1, "expected 1 class (Widget)");
+    assert!(
+        anchors[0].class_iri.ends_with("#Widget"),
+        "Widget class must be present"
+    );
+}
+
+// ── AC4-regression: cached OBO Foundry OWL files parse without error ─────────
+
+#[test]
+fn ac4_regression_cached_obo_foundry_owls_parse() {
+    let cache_dir = match std::env::var("HOME") {
+        Ok(h) => std::path::PathBuf::from(h).join(".cache/lattice/registry/owls"),
+        Err(_) => {
+            eprintln!("(cached files absent, install test skipped — HOME not set)");
+            return;
+        }
+    };
+
+    let candidates = ["bfo.owl", "iao.owl", "ro.owl", "cob.owl", "swo.owl"];
+    let mut found_any = false;
+
+    for name in &candidates {
+        let path = cache_dir.join(name);
+        if !path.exists() {
+            continue;
+        }
+        found_any = true;
+        let f = std::fs::File::open(&path)
+            .unwrap_or_else(|e| panic!("failed to open {}: {e}", path.display()));
+        let result = load_anchors(std::io::BufReader::new(f));
+        assert!(
+            result.is_ok(),
+            "{} must parse without error, got: {:?}",
+            name,
+            result.err()
+        );
+        let (anchors, _meta) = result.unwrap();
+        // Note: bfo.owl itself contains the BFO hierarchy — those classes are filtered
+        // out by is_bfo() since they ARE the BFO categories, not subclasses of them.
+        // Non-BFO ontologies (iao, ro, cob, swo) will have non-BFO classes anchored
+        // to BFO categories. We only assert parse-without-error here (the regression
+        // AC), not a non-empty anchor count.
+        eprintln!("  {name}: {} BFO-anchored classes parsed OK", anchors.len());
+    }
+
+    if !found_any {
+        eprintln!("(cached files absent, install test skipped)");
+    }
 }
 
 // ── AC5: --from-registry invokes lattice-registry path ───────────────────────

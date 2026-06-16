@@ -12,7 +12,7 @@ pub mod output;
 pub mod structural;
 pub mod vocab;
 
-pub use anchor::{BfoAnchor, BfoCategory};
+pub use anchor::{BfoAnchor, BfoCategory, OntologyMeta, preprocess_owl_xml};
 pub use error::BridgeError;
 pub use matcher::{align, AlignOptions, Mapping, MappingKind};
 pub use output::{write_bridge_owl, write_proposals_jsonl};
